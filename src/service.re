@@ -4,11 +4,9 @@ type joke = {
   content: string,
 };
 
-type response = {
-  value: list(joke),
-};
+type response = {value: list(joke)};
 
-let decode_entry = json: joke => {
+let decode_entry = (json): joke => {
   id: Json.Decode.field("id", Json.Decode.int, json),
   content: Json.Decode.field("joke", Json.Decode.string, json),
 };
@@ -33,13 +31,9 @@ let something_went_wrong = _err =>
 let handle_response = res =>
   Js.Promise.(
     if (Fetch.Response.ok(res)) {
-      res
-      |> Fetch.Response.json
-      |> then_(json => resolve(Ok(json)));
+      res |> Fetch.Response.json |> then_(json => resolve(Ok(json)));
     } else {
-      res
-      |> Fetch.Response.json
-      |> then_(json => resolve(Fail(json)));
+      res |> Fetch.Response.json |> then_(json => resolve(Fail(json)));
     }
   );
 
@@ -73,7 +67,7 @@ type remote_data('d) =
   | Failure(string);
 
 let is_loading = rd =>
-  switch(rd) {
+  switch (rd) {
   | Loading => true
   | _ => false
   };
