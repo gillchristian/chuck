@@ -6,8 +6,6 @@ type action =
   | FetchJokes
   | FetchJokesDone(Service.remote_data(jokes));
 
-let render_joke = j => <div> {ReasonReact.string(j.Service.content)} </div>;
-
 let make = _children => {
   ...ReasonReact.reducerComponent("Jokes"),
   initialState: () => {data: Service.NotAsked},
@@ -36,18 +34,29 @@ let make = _children => {
     },
   render: ({send, state}) =>
     <div>
-      {switch (state.data) {
-       | Service.NotAsked =>
-         <div> {ReasonReact.string("What are you waiting for?")} </div>
-       | Service.Loading => <div> {ReasonReact.string("Loading...")} </div>
-       | Service.Success(jokes) =>
-         jokes |> List.map(render_joke) |> Array.of_list |> ReasonReact.array
-       | Service.Failure(_) => <div> {ReasonReact.string("Ups ...")} </div>
-       }}
-      <button
-        onClick={_ => send(FetchJokes)}
-        disabled={Service.is_loading(state.data)}>
-        {ReasonReact.string("I want Chuck Norris Jokes!")}
-      </button>
+      <div className="section">
+        <button
+          className={
+            Service.is_loading(state.data) ?
+              "button is-primary is-loading" : "button is-primary"
+          }
+          onClick={_ => send(FetchJokes)}
+          disabled={Service.is_loading(state.data)}>
+          {ReasonReact.string("I want Chuck Norris Jokes!")}
+        </button>
+      </div>
+      <div className="section">
+        {switch (state.data) {
+         | Service.NotAsked =>
+           <div> {ReasonReact.string("What are you waiting for?")} </div>
+         | Service.Loading => <div> {ReasonReact.string("Loading...")} </div>
+         | Service.Success(jokes) =>
+           jokes
+           |> List.map(j => <Joke content={j.Service.content} />)
+           |> Array.of_list
+           |> ReasonReact.array
+         | Service.Failure(_) => <div> {ReasonReact.string("Ups ...")} </div>
+         }}
+      </div>
     </div>,
 };
