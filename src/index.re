@@ -1,6 +1,6 @@
 open Utils;
 
-ReactDOMRe.renderToElementWithId(<Greeting name="Parcel" />, "app");
+ReactDOMRe.renderToElementWithId(<Jokes />, "app");
 
 if (hot) {
   accept();
