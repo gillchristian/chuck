@@ -7,6 +7,7 @@ type state = {
   data: RemoteData.t(jokes),
   favorites,
   timer: ref(option(Js.Global.intervalId)),
+  isTimerOn: bool,
 };
 
 type action =
@@ -40,6 +41,7 @@ let make = _children => {
       data: RemoteData.NotAsked,
       favorites: IntMap.from_list(j => j.Service.id, favorites),
       timer: ref(None),
+      isTimerOn: false,
     };
   },
   reducer: (action, state) =>
@@ -103,7 +105,8 @@ let make = _children => {
     | StartTimer =>
       IntMap.cardinal(state.favorites) >= 10 ?
         ReasonReact.NoUpdate :
-        ReasonReact.SideEffects(
+        ReasonReact.UpdateWithSideEffects(
+          {...state, isTimerOn: true},
           ({state, send}) =>
             state.timer :=
               Some(Js.Global.setInterval(() => send(Tick), 5000)),
@@ -141,7 +144,7 @@ let make = _children => {
       | None => ReasonReact.NoUpdate
       | Some(id) =>
         ReasonReact.UpdateWithSideEffects(
-          {...state, timer: ref(None)},
+          {...state, timer: ref(None), isTimerOn: false},
           _self => Js.Global.clearInterval(id),
         )
       }
@@ -164,18 +167,15 @@ let make = _children => {
           disabled={RemoteData.is_loading(state.data)}>
           {ReasonReact.string("I want Chuck Norris Jokes!")}
         </button>
-        {switch (state.timer^) {
-         | None =>
-           <button
-             className="button is-warning" onClick={_ => send(StartTimer)}>
-             {ReasonReact.string("Start timer =D")}
-           </button>
-         | Some(_) =>
+        {state.isTimerOn ?
            <button
              className="button is-danger" onClick={_ => send(StopTimer)}>
              {ReasonReact.string("Stop timer !!!")}
-           </button>
-         }}
+           </button> :
+           <button
+             className="button is-warning" onClick={_ => send(StartTimer)}>
+             {ReasonReact.string("Start timer =D")}
+           </button>}
       </div>
       <div className="section columns">
         <div className="column">
