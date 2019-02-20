@@ -6,14 +6,26 @@ type joke = {
 
 type response = {value: list(joke)};
 
-let decode_entry = (json): joke => {
+let decode_joke = (json): joke => {
   id: Json.Decode.field("id", Json.Decode.int, json),
   content: Json.Decode.field("joke", Json.Decode.string, json),
 };
 
+let decode_jokes = Json.Decode.list(decode_joke);
+
 let decode_response = json => {
-  value: Json.Decode.field("value", Json.Decode.list(decode_entry), json),
+  value: Json.Decode.field("value", decode_jokes, json),
 };
+
+/* encoding */
+
+let encode_joke = joke =>
+  Json.Encode.object_([
+    ("id", Json.Encode.int(joke.id)),
+    ("joke", Json.Encode.string(joke.content)),
+  ]);
+
+let encode_jokes = jokes => Json.Encode.list(encode_joke, jokes);
 
 /* TODO: failure decoder */
 let decore_error_msg = json =>

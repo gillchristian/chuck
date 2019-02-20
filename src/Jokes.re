@@ -14,9 +14,29 @@ type action =
   | MarkFavorite(Service.joke)
   | RemoveFavorite(Service.joke);
 
+let persist_favorites = mfs =>
+  Dom.Storage.(
+    setItem(
+      "chuck_favorites",
+      mfs |> IntMap.values |> Service.encode_jokes |> Json.stringify,
+      localStorage,
+    )
+  );
+
 let make = _children => {
   ...ReasonReact.reducerComponent("Jokes"),
-  initialState: () => {data: RemoteData.NotAsked, favorites: IntMap.empty},
+  initialState: () => {
+    let favorites =
+      switch (Dom.Storage.(getItem("chuck_favorites", sessionStorage))) {
+      | Some(s) => s |> Json.parseOrRaise |> Service.decode_jokes
+      | None => []
+      };
+
+    {
+      data: RemoteData.NotAsked,
+      favorites: IntMap.from_list(j => j.Service.id, favorites),
+    };
+  },
   reducer: (action, state) =>
     switch (action) {
     | FetchJokes =>
@@ -38,25 +58,49 @@ let make = _children => {
              )
           |> ignore,
       )
-    /* TODO: merge with favorites */
-    | FetchJokesDone(data) => ReasonReact.Update({...state, data})
+    | FetchJokesDone(data) =>
+      ReasonReact.Update({
+        ...state,
+        data:
+          RemoteData.map(
+            js =>
+              List.filter(
+                j => !IntMap.mem(j.Service.id, state.favorites),
+                js,
+              ),
+            data,
+          ),
+      })
     | MarkFavorite(joke) =>
       IntMap.cardinal(state.favorites) >= 10 ?
         ReasonReact.NoUpdate :
-        ReasonReact.Update({
-          data:
-            RemoteData.map(
-              js => List.filter(j => joke.id !== j.Service.id, js),
-              state.data,
-            ),
-          favorites: IntMap.add(joke.id, joke, state.favorites),
-        })
+        ReasonReact.UpdateWithSideEffects(
+          {
+            data:
+              switch (state.data) {
+              | RemoteData.Success(js) =>
+                RemoteData.Success(
+                  List.filter(j => joke.id !== j.Service.id, js),
+                )
+              | _ => RemoteData.Success([joke])
+              },
+            favorites: IntMap.add(joke.id, joke, state.favorites),
+          },
+          ({state}) => persist_favorites(state.favorites),
+        )
     | RemoveFavorite(joke) =>
       IntMap.mem(joke.Service.id, state.favorites) ?
-        ReasonReact.Update({
-          data: RemoteData.map(js => [joke, ...js], state.data),
-          favorites: IntMap.remove(joke.id, state.favorites),
-        }) :
+        ReasonReact.UpdateWithSideEffects(
+          {
+            data:
+              switch (state.data) {
+              | RemoteData.Success(js) => RemoteData.Success([joke, ...js])
+              | _ => RemoteData.Success([joke])
+              },
+            favorites: IntMap.remove(joke.id, state.favorites),
+          },
+          ({state}) => persist_favorites(state.favorites),
+        ) :
         ReasonReact.NoUpdate
     },
   render: ({send, state}) =>

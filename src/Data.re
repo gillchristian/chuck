@@ -1,14 +1,14 @@
-module IntMap' =
-  Map.Make({
+module IntMap = {
+  include Map.Make({
     type t = int;
 
     let compare = compare;
   });
 
-module IntMap = {
-  include IntMap';
+  let values = m => fold((_key, v, vs) => [v, ...vs], m, []);
 
-  let values = m => IntMap'.fold((_key, v, vs) => [v, ...vs], m, []);
+  let from_list = (f, xs) =>
+    List.fold_right((i, m) => add(f(i), i, m), xs, empty);
 };
 
 module RemoteData = {
@@ -27,6 +27,12 @@ module RemoteData = {
   let map = (f, rd) =>
     switch (rd) {
     | Success(d) => Success(f(d))
+    | x => x
+    };
+
+  let chain = (f, rd) =>
+    switch (rd) {
+    | Success(d) => f(d)
     | x => x
     };
 };
