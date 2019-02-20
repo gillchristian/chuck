@@ -57,17 +57,3 @@ let fetch_jokes = count => {
 
   fetch(url, decode_response);
 };
-
-/* remote data */
-
-type remote_data('d) =
-  | NotAsked
-  | Loading
-  | Success('d)
-  | Failure(string);
-
-let is_loading = rd =>
-  switch (rd) {
-  | Loading => true
-  | _ => false
-  };
