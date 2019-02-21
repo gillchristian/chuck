@@ -11,14 +11,39 @@ type action =
 
 let onChange = (send, f, e) => e->ReactEvent.Form.target##value->f->send;
 
+let persist = ({login, password}) =>
+  Dom.Storage.(
+    {
+      setItem("chuck_login", login, sessionStorage);
+      setItem("chuck_password", password, sessionStorage);
+    }
+  );
+
+let retreive = () =>
+  Dom.Storage.(
+    {
+      let somelogin = getItem("chuck_login", sessionStorage);
+      let somepass = getItem("chuck_password", sessionStorage);
+
+      switch (somelogin, somepass) {
+      | (Some(login), Some(password)) => {show: false, login, password}
+      | _ => {show: true, login: "", password: ""}
+      };
+    }
+  );
+
 let make = _children => {
   ...ReasonReact.reducerComponent("Login"),
-  initialState: () => {show: true, login: "", password: ""},
+  initialState: retreive,
   reducer: (action, state) =>
     switch (action) {
     | Password(password) => ReasonReact.Update({...state, password})
     | Login(login) => ReasonReact.Update({...state, login})
-    | OnLogin => ReasonReact.Update({...state, show: false})
+    | OnLogin =>
+      ReasonReact.UpdateWithSideEffects(
+        {...state, show: false},
+        ({state}) => persist(state),
+      )
     },
   render: ({state, send}) =>
     <div className={state.show ? "modal is-active" : "modal"}>
