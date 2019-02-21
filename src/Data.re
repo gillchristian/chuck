@@ -36,3 +36,10 @@ module RemoteData = {
     | x => x
     };
 };
+
+let rec range = (start, end_) =>
+  if (start >= end_) {
+    [];
+  } else {
+    [start, ...range(start + 1, end_)];
+  };
