@@ -40,27 +40,32 @@ type result('a, 'b) =
 let something_went_wrong = _err =>
   Fail("Something went wront...") |> Js.Promise.resolve;
 
-let handle_response = res =>
+let handle_response = res => {
   Js.Promise.(
-    if (Fetch.Response.ok(res)) {
-      res |> Fetch.Response.json |> then_(json => resolve(Ok(json)));
-    } else {
-      res |> Fetch.Response.json |> then_(json => resolve(Fail(json)));
-    }
+    Fetch.Response.(
+      if (ok(res)) {
+        res |> json |> then_(j => resolve(Ok(j)));
+      } else {
+        res |> json |> then_(j => resolve(Fail(j)));
+      }
+    )
   );
+};
 
 let fetch = (url, success_decoder) =>
-  Fetch.fetch(url)
-  |> Js.Promise.then_(handle_response)
-  |> Js.Promise.then_(either_json =>
-       Js.Promise.resolve(
-         switch (either_json) {
-         | Ok(res) => Ok(success_decoder(res))
-         | Fail(json) => Fail(decore_error_msg(json))
-         },
+  Js.Promise.(
+    Fetch.fetch(url)
+    |> then_(handle_response)
+    |> then_(either_json =>
+         resolve(
+           switch (either_json) {
+           | Ok(res) => Ok(success_decoder(res))
+           | Fail(json) => Fail(decore_error_msg(json))
+           },
+         )
        )
-     )
-  |> Js.Promise.catch(something_went_wrong);
+    |> catch(something_went_wrong)
+  );
 
 /* fetch methods */
 
