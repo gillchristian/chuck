@@ -6,8 +6,7 @@ type jokes = list(Service.joke);
 type state = {
   data: RemoteData.t(jokes),
   favorites,
-  timer: ref(option(Js.Global.intervalId)),
-  isTimerOn: bool,
+  timerId: option(Js.Global.intervalId),
 };
 
 type action =
@@ -16,6 +15,7 @@ type action =
   | MarkFavorite(Service.joke)
   | RemoveFavorite(Service.joke)
   | StartTimer
+  | SetIntervalId(Js.Global.intervalId)
   | Tick
   | StopTimer;
 
@@ -40,8 +40,7 @@ let make = _children => {
     {
       data: RemoteData.NotAsked,
       favorites: IntMap.from_list(j => j.Service.id, favorites),
-      timer: ref(None),
-      isTimerOn: false,
+      timerId: None,
     };
   },
   reducer: (action, state) =>
@@ -102,14 +101,15 @@ let make = _children => {
           ({state}) => persist_favorites(state.favorites),
         ) :
         ReasonReact.NoUpdate
+    | SetIntervalId(timerId) => Update({...state, timerId: timerId->Some})
     | StartTimer =>
       IntMap.cardinal(state.favorites) >= 10 ?
         ReasonReact.NoUpdate :
-        ReasonReact.UpdateWithSideEffects(
-          {...state, isTimerOn: true},
-          ({state, send}) =>
-            state.timer :=
-              Some(Js.Global.setInterval(() => send(Tick), 5000)),
+        ReasonReact.SideEffects(
+          ({send}) =>
+            Js.Global.setInterval(() => send(Tick), 5000)
+            ->SetIntervalId
+            ->send,
         )
     | Tick =>
       IntMap.cardinal(state.favorites) >= 10 ?
@@ -140,17 +140,17 @@ let make = _children => {
             ),
         )
     | StopTimer =>
-      switch (state.timer^) {
+      switch (state.timerId) {
       | None => ReasonReact.NoUpdate
       | Some(id) =>
         ReasonReact.UpdateWithSideEffects(
-          {...state, timer: ref(None), isTimerOn: false},
+          {...state, timerId: None},
           _self => Js.Global.clearInterval(id),
         )
       }
     },
   willUnmount: self => {
-    switch (self.state.timer^) {
+    switch (self.state.timerId) {
     | Some(id) => Js.Global.clearInterval(id)
     | None => ()
     };
@@ -167,7 +167,7 @@ let make = _children => {
           disabled={RemoteData.is_loading(state.data)}>
           {ReasonReact.string("I want Chuck Norris Jokes!")}
         </button>
-        {state.isTimerOn ?
+        {state.timerId->Belt.Option.isSome ?
            <button
              className="button is-danger" onClick={_ => send(StopTimer)}>
              {ReasonReact.string("Stop timer !!!")}
